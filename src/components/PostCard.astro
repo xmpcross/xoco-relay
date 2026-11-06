@@ -1,0 +1,168 @@
+---
+import { Image } from "astro:assets";
+import CategoryTag from "@/components/CategoryTag.astro";
+import PostMeta from "@/components/ui/PostMeta.astro";
+import { formatDate, postHref, type Post } from "@/lib/posts";
+
+interface Props {
+  post: Post;
+  /**
+   * `primary` — square cover above the copy (the default grid card)
+   * `overlay` — copy laid over the cover inside a scrim
+   * `compact` — thumbnail beside a short title, for sidebars
+   * `list`    — wide editorial row
+   */
+  variant?: "primary" | "overlay" | "compact" | "list";
+  /** Overlay height: `short` for wide rails, `tall` for sidebar features. */
+  size?: "short" | "default" | "tall";
+  /** Loads the cover eagerly — set it on cards that render above the fold. */
+  eager?: boolean;
+  showExcerpt?: boolean;
+  headingLevel?: "h2" | "h3";
+  class?: string;
+}
+
+const {
+  post,
+  variant = "primary",
+  size = "default",
+  eager = false,
+  showExcerpt = false,
+  headingLevel = "h3",
+  class: className = "",
+} = Astro.props;
+
+const href = postHref(post);
+const data = post.data;
+const image = data.cover;
+const loading = eager ? "eager" : "lazy";
+const Heading = headingLevel;
+---
+
+{
+  variant === "primary" && (
+    <article class:list={["card zoom-host", className]}>
+      <div class="card__media">
+        <div class="media media--square">
+          <Image
+            src={image.src}
+            alt={image.alt}
+            widths={[320, 480, 640, 880]}
+            sizes="(min-width: 64rem) 400px, (min-width: 40rem) 45vw, 92vw"
+            loading={loading}
+            decoding="async"
+          />
+        </div>
+        <div class="card__tags tag-row">
+          <CategoryTag category={data.category} />
+        </div>
+      </div>
+      <a class="card__link" href={href} aria-label={data.title} />
+      <div class="card__body">
+        <Heading class="txt-h4 card__title">{data.title}</Heading>
+        {showExcerpt && <p class="txt-s txt-dim line-clamp-2">{data.excerpt}</p>}
+        <PostMeta post={post} class="card__meta" />
+      </div>
+    </article>
+  )
+}
+
+{
+  variant === "overlay" && (
+    <article
+      class:list={[
+        "card-overlay",
+        size === "tall" && "card-overlay--tall",
+        size === "short" && "card-overlay--short",
+        className,
+      ]}
+    >
+      <div class="card-overlay__media">
+        <Image
+          src={image.src}
+          alt={image.alt}
+          widths={[480, 720, 960, 1280]}
+          sizes="(min-width: 64rem) 620px, 92vw"
+          loading={loading}
+          decoding="async"
+        />
+      </div>
+      <div class="card-overlay__tags tag-row">
+        <CategoryTag category={data.category} />
+      </div>
+      <a class="card__link" href={href} aria-label={data.title} />
+      <div class="card-overlay__body scrim">
+        <Heading class="txt-h4 card-overlay__title">{data.title}</Heading>
+        {showExcerpt && <p class="txt-s card-overlay__excerpt line-clamp-2">{data.excerpt}</p>}
+        <PostMeta post={post} onDark />
+      </div>
+    </article>
+  )
+}
+
+{
+  variant === "compact" && (
+    <article class:list={["card-compact", className]}>
+      <div class="card-compact__media">
+        <Image
+          src={image.src}
+          alt={image.alt}
+          width={160}
+          height={160}
+          loading={loading}
+          decoding="async"
+        />
+      </div>
+      <a class="card__link" href={href} aria-label={data.title} />
+      <div class="card__body" style="gap:0.4rem">
+        <Heading class="txt-h6 card__title">{data.title}</Heading>
+        <p class="txt-cap txt-dim">
+          <time datetime={data.date.toISOString()}>{formatDate(data.date)}</time>
+        </p>
+      </div>
+    </article>
+  )
+}
+
+{
+  variant === "list" && (
+    <article class:list={["card zoom-host card--list", className]}>
+      <div class="card__media">
+        <div class="media media--wide">
+          <Image
+            src={image.src}
+            alt={image.alt}
+            widths={[360, 520, 720]}
+            sizes="(min-width: 48rem) 300px, 92vw"
+            loading={loading}
+            decoding="async"
+          />
+        </div>
+        <div class="card__tags tag-row">
+          <CategoryTag category={data.category} />
+        </div>
+      </div>
+      <a class="card__link" href={href} aria-label={data.title} />
+      <div class="card__body">
+        <Heading class="txt-h3 card__title">{data.title}</Heading>
+        <p class="txt-s txt-dim line-clamp-2">{data.excerpt}</p>
+        <PostMeta post={post} showReadTime class="card__meta" />
+      </div>
+    </article>
+  )
+}
+
+<style>
+  .card--list {
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 48rem) {
+    .card--list {
+      display: grid;
+      grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
+      align-items: center;
+    }
+  }
+
+</style>

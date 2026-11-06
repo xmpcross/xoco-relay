@@ -1,0 +1,148 @@
+---
+import { getCollection } from "astro:content";
+import CategoryTile from "@/components/CategoryTile.astro";
+import Hero from "@/components/Hero.astro";
+import NewsletterSignup from "@/components/NewsletterSignup.astro";
+import PostCard from "@/components/PostCard.astro";
+import Rail from "@/components/Rail.astro";
+import SectionHeader from "@/components/SectionHeader.astro";
+import SiteFooter from "@/components/SiteFooter.astro";
+import SiteHeader from "@/components/SiteHeader.astro";
+import SwapText from "@/components/ui/SwapText.astro";
+import SidebarAuthors from "@/components/sidebar/SidebarAuthors.astro";
+import SidebarPosts from "@/components/sidebar/SidebarPosts.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { siteConfig } from "@/config/site";
+import {
+  categories,
+  categorySlug,
+  excludePosts,
+  getAllAuthors,
+  getByCategory,
+  getFeatured,
+  getTrending,
+  visiblePosts,
+} from "@/lib/posts";
+
+const articles = visiblePosts(await getCollection("posts"));
+const allPosts = articles;
+
+const featured = getFeatured(articles, 3);
+const trending = getTrending(excludePosts(articles, featured), 4);
+/** Lead the category rail with whichever section has the deepest archive. */
+const spotlightCategory = [...categories].sort(
+  (a, b) => getByCategory(articles, b).length - getByCategory(articles, a).length,
+)[0];
+const spotlight = spotlightCategory ? getByCategory(articles, spotlightCategory, 3) : [];
+const latest = excludePosts(articles, [...featured, ...trending]).slice(0, 8);
+/** Two rows of cards lead the section, then the rest run as editorial rows. */
+const latestGrid = latest.slice(0, 4);
+const latestList = latest.slice(4);
+const editorsPicks = excludePosts(articles, [...featured, ...latest]).slice(0, 5);
+/** Trending first, then newest — minus whatever the picks list already shows. */
+const mostRead = excludePosts(getTrending(articles, articles.length), editorsPicks).slice(0, 5);
+const authors = getAllAuthors(allPosts);
+
+const topics = categories
+  .map((category) => {
+    const posts = getByCategory(allPosts, category);
+    return { category, count: posts.length, cover: posts[0]?.data.cover };
+  })
+  .filter((topic) => topic.count > 0);
+---
+
+<BaseLayout>
+  <SiteHeader posts={allPosts} />
+  <main id="content">
+    <h1 class="sr-only">{siteConfig.name} — {siteConfig.tagline}</h1>
+
+    <div class="frame">
+      <Hero posts={featured} />
+    </div>
+
+    {
+      trending.length > 0 && (
+        <section class="container section section-top reveal" aria-labelledby="home-trending">
+          <SectionHeader title="Trending" href="/posts/" id="home-trending" />
+          <Rail label="Trending stories" columns={2} itemWidth="86%" itemWidthSm="62%" scroll itemWidthLg="49%">
+            {trending.map((post) => (
+              <PostCard post={post} variant="overlay" size="tall" showExcerpt eager />
+            ))}
+          </Rail>
+        </section>
+      )
+    }
+
+    {
+      spotlightCategory && spotlight.length > 0 && (
+        <section class="container section reveal" aria-labelledby="home-spotlight">
+          <SectionHeader
+            title={spotlightCategory}
+            href={`/category/${categorySlug(spotlightCategory)}/`}
+            id="home-spotlight"
+          />
+          <Rail label={`${spotlightCategory} stories`} columns={3} itemWidth="82%" itemWidthSm="52%">
+            {spotlight.map((post) => (
+              <PostCard post={post} variant="overlay" size="short" />
+            ))}
+          </Rail>
+        </section>
+      )
+    }
+
+    <section class="container section reveal" aria-labelledby="home-topics">
+      <SectionHeader title="Popular topics" href="/posts/" id="home-topics" />
+      <Rail label="Topics" columns={4} itemWidth="52%" itemWidthSm="32%" scroll itemWidthLg="24%">
+        {topics.map((topic) => <CategoryTile category={topic.category} count={topic.count} cover={topic.cover} />)}
+      </Rail>
+    </section>
+
+    <section class="container section" aria-labelledby="home-latest">
+      <div class="with-sidebar">
+        <div class="min-w-0">
+          <SectionHeader title="Latest posts" href="/posts/" id="home-latest" />
+          <div class="grid-cards">
+            {latestGrid.map((post) => (
+              <PostCard post={post} headingLevel="h3" />
+            ))}
+          </div>
+          {latestList.length > 0 && (
+            <div class="home-latest-list">
+              {latestList.map((post) => (
+                <PostCard post={post} variant="list" headingLevel="h3" />
+              ))}
+            </div>
+          )}
+          <div class="home-more">
+            <a class="btn btn--ghost btn--lg" href="/posts/">
+              <SwapText text="Browse the archive" />
+            </a>
+          </div>
+        </div>
+
+        <aside class="sidebar-stack" aria-label="Publication highlights">
+          <SidebarPosts title="Editor's picks" posts={editorsPicks} id="home-editors-picks" />
+          <SidebarPosts title="Most read" posts={mostRead} id="home-most-read" />
+          <SidebarAuthors authors={authors} />
+        </aside>
+      </div>
+    </section>
+
+    <NewsletterSignup />
+  </main>
+  <SiteFooter />
+</BaseLayout>
+
+<style>
+  .home-latest-list {
+    display: grid;
+    gap: 2.5rem;
+    margin-top: 2.5rem;
+  }
+
+  .home-more {
+    display: flex;
+    justify-content: center;
+    margin-top: 3rem;
+  }
+</style>

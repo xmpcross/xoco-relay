@@ -1,0 +1,444 @@
+---
+import { Image } from "astro:assets";
+import { getCollection, render } from "astro:content";
+import LocalIcon from "@/components/LocalIcon.astro";
+import NewsletterSignup from "@/components/NewsletterSignup.astro";
+import PostCard from "@/components/PostCard.astro";
+import Rail from "@/components/Rail.astro";
+import SectionHeader from "@/components/SectionHeader.astro";
+import SiteFooter from "@/components/SiteFooter.astro";
+import SiteHeader from "@/components/SiteHeader.astro";
+import Avatar from "@/components/ui/Avatar.astro";
+import CategoryTag from "@/components/CategoryTag.astro";
+import Icon from "@/components/ui/Icon.astro";
+import SwapText from "@/components/ui/SwapText.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import {
+  authorSlug,
+  categorySlug,
+  formatDate,
+  getRelated,
+  postSlug,
+  readMinutes,
+  tagSlug,
+  visiblePosts,
+  type Post,
+} from "@/lib/posts";
+import { siteConfig } from "@/config/site";
+
+export async function getStaticPaths() {
+  const allPosts = visiblePosts(await getCollection("posts"));
+  return allPosts.map((post) => ({
+    params: { slug: postSlug(post) },
+    props: { post, allPosts },
+  }));
+}
+
+interface Props {
+  post: Post;
+  allPosts: Post[];
+}
+
+const { post, allPosts } = Astro.props;
+const { Content } = await render(post);
+const related = getRelated(allPosts, post);
+const data = post.data;
+const slug = postSlug(post);
+/** Posts can opt out of the cover image and run as a text-only document. */
+const showCover = data.cover.showInPost ?? true;
+const categoryHref = `/category/${categorySlug(data.category)}/`;
+const authorHref = `/author/${authorSlug(data.author.name)}/`;
+const articleUrl = new URL(`/post/${slug}/`, siteConfig.siteUrl).toString();
+const absoluteImageUrl = new URL(data.cover.src.src, siteConfig.siteUrl).toString();
+const encodedArticleUrl = encodeURIComponent(articleUrl);
+const encodedTitle = encodeURIComponent(data.title);
+const shareLinks: { label: string; icon: "twitter-x" | "facebook" | "linkedin"; href: string }[] = [
+  {
+    label: "X",
+    icon: "twitter-x",
+    href: `https://twitter.com/intent/tweet?url=${encodedArticleUrl}&text=${encodedTitle}`,
+  },
+  {
+    label: "Facebook",
+    icon: "facebook",
+    href: `https://www.facebook.com/sharer/sharer.php?u=${encodedArticleUrl}`,
+  },
+  {
+    label: "LinkedIn",
+    icon: "linkedin",
+    href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedArticleUrl}`,
+  },
+];
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  headline: data.title,
+  description: data.excerpt,
+  image: absoluteImageUrl,
+  datePublished: data.date.toISOString(),
+  dateModified: (data.updatedDate ?? data.date).toISOString(),
+  author: { "@type": "Person", name: data.author.name },
+  publisher: { "@type": "Organization", name: siteConfig.authorName },
+  mainEntityOfPage: articleUrl,
+};
+---
+
+<BaseLayout
+  title={data.title}
+  description={data.excerpt}
+  image={absoluteImageUrl}
+  type="article"
+  structuredData={structuredData}
+>
+  <SiteHeader posts={allPosts} />
+
+  <div class="reading-progress" aria-hidden="true">
+    <div class="reading-progress__bar" data-reading-progress></div>
+  </div>
+
+  <main id="content">
+    <article data-article>
+      <nav class="container post-breadcrumbs txt-sub-xs" aria-label="Breadcrumb">
+        <a class="underline-hover" href="/">Home</a>
+        <span aria-hidden="true">/</span>
+        <a class="underline-hover" href={categoryHref}>{data.category}</a>
+      </nav>
+
+      <div class="post-head">
+        <header class="container-reading post-head__meta">
+          <div class="tag-row">
+            <CategoryTag category={data.category} variant="surface" />
+          </div>
+          <h1 class="txt-h1">{data.title}</h1>
+          <p class="txt-l txt-dim">{data.excerpt}</p>
+          <div class="meta">
+            <a class="meta__byline" href={authorHref}>
+              <Avatar name={data.author.name} />
+              <span class="post-head__by">by</span>
+              <SwapText text={data.author.name} />
+            </a>
+            <time class="meta__fact" datetime={data.date.toISOString()}>
+              {formatDate(data.date, "long")}
+            </time>
+            <span class="meta__fact">{readMinutes(post)} min read</span>
+          </div>
+        </header>
+
+        {
+          showCover && (
+            <figure class="container-reading post-head__figure">
+              <div class="media post-head__media">
+                <Image
+                  src={data.cover.src}
+                  alt={data.cover.alt}
+                  widths={[640, 960, 1280, 1600]}
+                  sizes="(min-width: 54rem) 820px, calc(100vw - 2rem)"
+                  loading="eager"
+                  decoding="async"
+                />
+              </div>
+              <figcaption class="txt-cap txt-dim post-head__credit">
+                Photo:{" "}
+                <a class="underline-hover" href={data.cover.creditUrl} rel="noreferrer">
+                  {data.cover.creditName}
+                </a>
+              </figcaption>
+            </figure>
+          )
+        }
+      </div>
+
+      <div class="container-reading post-body">
+        <div class="prose">
+          <Content />
+        </div>
+
+        {
+          data.updatedDate && (
+            <p class="txt-xs txt-dim post-updated">
+              Updated{" "}
+              <time datetime={data.updatedDate.toISOString()}>{formatDate(data.updatedDate, "long")}</time>
+            </p>
+          )
+        }
+
+        {
+          data.tags.length > 0 && (
+            <div class="post-box">
+              <ul class="post-tags" aria-label="Tags">
+                {data.tags.map((tag) => (
+                  <li>
+                    <a class="tag tag--surface" href={`/tag/${tagSlug(tag)}/`}>
+                      <SwapText text={tag} />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+
+        <div class="post-box post-share" role="group" aria-labelledby="post-share-title">
+          <p id="post-share-title" class="txt-h4">Share this story</p>
+          <div class="post-share__links">
+            {
+              shareLinks.map((link) => (
+                <a
+                  href={link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  class="icon-btn icon-btn--outline icon-btn--round"
+                  aria-label={`Share ${data.title} on ${link.label}`}
+                >
+                  <LocalIcon name={link.icon} className="h-4 w-4" />
+                </a>
+              ))
+            }
+            <button
+              type="button"
+              class="icon-btn icon-btn--outline icon-btn--round"
+              data-copy-link
+              data-copy-url={articleUrl}
+              aria-label={`Copy link to ${data.title}`}
+            >
+              <Icon name="link" />
+            </button>
+            <span class="txt-cap txt-dim" aria-live="polite" data-copy-status></span>
+          </div>
+        </div>
+
+        <div class="post-box post-author">
+          <Avatar name={data.author.name} size="lg" />
+          <div>
+            <p class="txt-h4">
+              <a class="underline-hover" href={authorHref}>{data.author.name}</a>
+            </p>
+            <p class="txt-s txt-dim">{data.author.role}</p>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    {
+      related.length > 0 && (
+        <section class="container section section-top" aria-labelledby="post-related">
+          <SectionHeader
+            title="Keep reading"
+            href="/posts/"
+            linkLabel="All posts"
+            id="post-related"
+          />
+          <Rail label="Related stories" columns={3} itemWidth="82%" itemWidthSm="52%">
+            {related.map((item) => (
+              <PostCard post={item} variant="overlay" size="short" />
+            ))}
+          </Rail>
+        </section>
+      )
+    }
+
+    <NewsletterSignup id="post-newsletter" />
+  </main>
+  <SiteFooter />
+
+  <script is:inline>
+    (() => {
+      const article = document.querySelector("[data-article]");
+      const progress = document.querySelector("[data-reading-progress]");
+
+      if (article && progress) {
+        let ticking = false;
+
+        const update = () => {
+          const rect = article.getBoundingClientRect();
+          const total = rect.height - window.innerHeight;
+          const read = total > 0 ? Math.min(Math.max(-rect.top / total, 0), 1) : 0;
+          progress.style.setProperty("--progress", `${(read * 100).toFixed(2)}%`);
+          ticking = false;
+        };
+
+        update();
+        window.addEventListener(
+          "scroll",
+          () => {
+            if (ticking) return;
+            ticking = true;
+            window.requestAnimationFrame(update);
+          },
+          { passive: true },
+        );
+        window.addEventListener("resize", update, { passive: true });
+      }
+
+      document.querySelectorAll("[data-copy-link]").forEach((copyLinkButton) => {
+        const copyLinkStatus = copyLinkButton.parentElement?.querySelector("[data-copy-status]");
+
+        copyLinkButton.addEventListener("click", async () => {
+          const url = copyLinkButton.getAttribute("data-copy-url");
+          if (!url) return;
+
+          try {
+            if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
+
+            await navigator.clipboard.writeText(url);
+
+            if (copyLinkStatus) copyLinkStatus.textContent = "Link copied";
+          } catch {
+            if (copyLinkStatus) copyLinkStatus.textContent = "Copy failed";
+          }
+        });
+      });
+
+      document.querySelectorAll(".prose pre").forEach((pre, index) => {
+        if (pre.closest(".code-copy-frame")) return;
+
+        const code = pre.querySelector("code");
+        const wrapper = document.createElement("div");
+        const button = document.createElement("button");
+        const status = document.createElement("span");
+        const labelId = `code-copy-${index}`;
+
+        wrapper.className = "code-copy-frame";
+        button.type = "button";
+        button.className = "code-copy-button";
+        button.setAttribute("aria-describedby", labelId);
+        button.textContent = "Copy";
+        status.id = labelId;
+        status.className = "sr-only";
+        status.setAttribute("aria-live", "polite");
+
+        pre.parentNode?.insertBefore(wrapper, pre);
+        wrapper.append(pre, button, status);
+
+        button.addEventListener("click", async () => {
+          try {
+            if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
+
+            await navigator.clipboard.writeText(code?.textContent ?? pre.textContent ?? "");
+            button.textContent = "Copied";
+            status.textContent = "Code copied";
+            window.setTimeout(() => {
+              button.textContent = "Copy";
+            }, 1800);
+          } catch {
+            button.textContent = "Failed";
+            status.textContent = "Copy failed";
+            window.setTimeout(() => {
+              button.textContent = "Copy";
+            }, 1800);
+          }
+        });
+      });
+    })();
+  </script>
+
+  <style>
+    .post-breadcrumbs {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      padding-block: 1.25rem;
+      color: var(--muted-foreground);
+    }
+
+    /* Title block sits above the cover so the story opens with type rather
+       than with a photograph. */
+    .post-head {
+      padding-block: 1.5rem 0;
+    }
+
+    .post-head__meta {
+      display: grid;
+      justify-items: start;
+      gap: 0.875rem;
+    }
+
+    .post-head__by {
+      color: var(--muted-foreground);
+    }
+
+    /* `auto` inline margins matter here: `.container-reading` centres the
+       figure and a shorthand reset would knock it back to the left edge. */
+    .post-head__figure {
+      margin: 2.5rem auto 0;
+    }
+
+    .post-head__media {
+      aspect-ratio: 3 / 2;
+    }
+
+    .post-head__credit {
+      margin-top: 0.75rem;
+    }
+
+    .post-body {
+      padding-top: 3rem;
+      padding-bottom: 1rem;
+    }
+
+    .post-updated {
+      margin-top: 2rem;
+    }
+
+    .post-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 1rem 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .post-share__links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .post-author {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .post-author p + p {
+      margin-top: 0.15rem;
+    }
+
+    /* Code copy affordance, injected by the script above. */
+    .prose :global(.code-copy-frame) {
+      position: relative;
+    }
+
+    .prose :global(.code-copy-frame pre) {
+      padding-top: 3rem;
+    }
+
+    .prose :global(.code-copy-button) {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      background: var(--card);
+      color: var(--muted-foreground);
+      cursor: pointer;
+      padding: 0.25rem 0.55rem;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      transition:
+        border-color 0.18s ease,
+        color 0.18s ease;
+    }
+
+    .prose :global(.code-copy-button:hover),
+    .prose :global(.code-copy-button:focus-visible) {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+  </style>
+</BaseLayout>

@@ -1,0 +1,154 @@
+---
+import { Image } from "astro:assets";
+import CategoryTag from "@/components/CategoryTag.astro";
+import Icon from "@/components/ui/Icon.astro";
+import PostMeta from "@/components/ui/PostMeta.astro";
+import { postHref, type Post } from "@/lib/posts";
+
+interface Props {
+  posts: Post[];
+  /** Autoplay interval in ms; the progress bars are timed to match. */
+  duration?: number;
+}
+
+const { posts, duration = 7000 } = Astro.props;
+const slides = posts.slice(0, 4);
+---
+
+{
+  slides.length > 0 && (
+    <section
+      class="hero"
+      aria-roledescription="carousel"
+      aria-label="Featured stories"
+      data-hero
+      style={`--hero-duration:${duration}ms`}
+    >
+      {slides.map((post, index) => (
+        <div class:list={["hero__media", index === 0 && "is-active"]} data-hero-media>
+          <Image
+            src={post.data.cover.src}
+            alt=""
+            widths={[720, 1080, 1440, 1920]}
+            sizes="100vw"
+            loading={index === 0 ? "eager" : "lazy"}
+            fetchpriority={index === 0 ? "high" : "auto"}
+            decoding="async"
+          />
+        </div>
+      ))}
+
+      <div class="hero__ui">
+        <div class="hero__stage">
+          {slides.map((post, index) => (
+            <article
+              class:list={["hero__panel", index === 0 && "is-active"]}
+              data-hero-panel
+              inert={index !== 0}
+            >
+              <CategoryTag category={post.data.category} />
+              <h2 class="txt-h1 hero__title">
+                <a href={postHref(post)}>{post.data.title}</a>
+              </h2>
+              <p class="txt-m hero__excerpt line-clamp-2">{post.data.excerpt}</p>
+              <PostMeta post={post} onDark showReadTime />
+            </article>
+          ))}
+        </div>
+
+        {slides.length > 1 && (
+          <div class="hero__progress" data-hero-progress>
+            {slides.map((_, index) => (
+              <span class:list={["hero__progress-item", index === 0 && "is-active"]} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {slides.length > 1 && (
+        <>
+          <button
+            type="button"
+            class="icon-btn icon-btn--glass icon-btn--round hero__nav hero__nav--prev"
+            data-hero-prev
+            aria-label="Previous story"
+          >
+            <Icon name="arrow-left" />
+          </button>
+          <button
+            type="button"
+            class="icon-btn icon-btn--glass icon-btn--round hero__nav hero__nav--next"
+            data-hero-next
+            aria-label="Next story"
+          >
+            <Icon name="arrow-right" />
+          </button>
+        </>
+      )}
+    </section>
+  )
+}
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-hero]").forEach((hero) => {
+    const media = Array.from(hero.querySelectorAll<HTMLElement>("[data-hero-media]"));
+    const panels = Array.from(hero.querySelectorAll<HTMLElement>("[data-hero-panel]"));
+    const bars = Array.from(hero.querySelectorAll<HTMLElement>(".hero__progress-item"));
+    if (panels.length < 2) return;
+
+    const durationValue = getComputedStyle(hero).getPropertyValue("--hero-duration").trim();
+    const duration = durationValue.endsWith("ms")
+      ? Number.parseFloat(durationValue)
+      : Number.parseFloat(durationValue) * 1000;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    let index = 0;
+    let timer = 0;
+
+    const show = (next: number) => {
+      index = (next + panels.length) % panels.length;
+
+      media.forEach((item, i) => item.classList.toggle("is-active", i === index));
+      panels.forEach((panel, i) => {
+        const active = i === index;
+        panel.classList.toggle("is-active", active);
+        // `inert` takes the whole slide out of the tab order and the
+        // accessibility tree, so no per-link tabindex bookkeeping is needed.
+        panel.inert = !active;
+      });
+      bars.forEach((bar, i) => {
+        // Restart the CSS animation on the newly active bar.
+        bar.classList.remove("is-active", "is-done");
+        void bar.offsetWidth;
+        if (i < index) bar.classList.add("is-done");
+        if (i === index) bar.classList.add("is-active");
+      });
+    };
+
+    const play = () => {
+      if (reduceMotion) return;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        show(index + 1);
+        play();
+      }, duration || 7000);
+    };
+
+    const goto = (next: number) => {
+      show(next);
+      play();
+    };
+
+    hero.querySelector("[data-hero-prev]")?.addEventListener("click", () => goto(index - 1));
+    hero.querySelector("[data-hero-next]")?.addEventListener("click", () => goto(index + 1));
+    hero.addEventListener("mouseenter", () => window.clearTimeout(timer));
+    hero.addEventListener("mouseleave", play);
+    hero.addEventListener("focusin", () => window.clearTimeout(timer));
+    hero.addEventListener("focusout", (event) => {
+      if (!hero.contains(event.relatedTarget as Node)) play();
+    });
+
+    show(0);
+    play();
+  });
+</script>

@@ -1,0 +1,178 @@
+---
+import LocalIcon from "@/components/LocalIcon.astro";
+import SubscribeForm from "@/components/SubscribeForm.astro";
+import SwapText from "@/components/ui/SwapText.astro";
+import { footerNavigation, siteConfig } from "@/config/site";
+import { socialIconFor } from "@/lib/socials";
+
+const currentYear = new Date().getFullYear();
+---
+
+<footer class="frame site-footer" data-site-footer>
+  <div class="frame-block">
+    <div class="container site-footer__inner">
+      <div class="site-footer__row">
+        <a href="/" class="wordmark site-footer__wordmark" aria-label={`${siteConfig.name} home`}>
+          {siteConfig.name}
+        </a>
+      </div>
+
+      <div class="site-footer__row site-footer__row--top">
+        <div class="site-footer__subscribe">
+          <p class="txt-xs txt-dim">{siteConfig.bio}</p>
+          <ul class="site-footer__socials hover-fade-group">
+            {
+              siteConfig.socials.map((item) => (
+                <li>
+                  <a
+                    href={item.href}
+                    class="site-footer__social"
+                    aria-label={item.label}
+                    rel={item.href.startsWith("http") ? "noreferrer" : undefined}
+                  >
+                    <LocalIcon name={socialIconFor(item.label)} className="h-5 w-5" />
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+          <SubscribeForm id="footer-email" onDark showTerms={false} />
+        </div>
+
+        <nav class="site-footer__nav" aria-label="Footer">
+          {
+            footerNavigation.map((group) => (
+              <div>
+                <p class="txt-sub-xs site-footer__group-title">{group.title}</p>
+                <ul class="hover-fade-group">
+                  {group.links.map((link) => (
+                    <li>
+                      <a class="txt-xs site-footer__link" href={link.href}>
+                        <SwapText text={link.label} />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          }
+        </nav>
+      </div>
+
+      <div class="site-footer__row site-footer__bottom">
+        <p class="txt-cap txt-dim">
+          &copy; {currentYear} {siteConfig.name}. Built with Astro.
+        </p>
+        <p class="txt-cap txt-dim">{siteConfig.tagline}</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: var(--section-gap);
+  }
+
+  .site-footer__inner {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+    padding-block: 3rem;
+  }
+
+  .site-footer__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .site-footer__row--top {
+    align-items: flex-start;
+  }
+
+  .site-footer__wordmark {
+    font-size: 1.5rem;
+  }
+
+  .site-footer__socials,
+  .site-footer__nav ul {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-footer__socials {
+    flex-wrap: wrap;
+    gap: 0.625rem;
+  }
+
+  /* Icon-only marks: the label lives on `aria-label`, so the row stays quiet
+     next to the blurb above it. */
+  .site-footer__social {
+    display: inline-grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid rgb(255 255 255 / 0.16);
+    border-radius: var(--radius-full);
+    transition:
+      background-color 0.25s ease,
+      border-color 0.25s ease,
+      color 0.25s ease;
+  }
+
+  .site-footer__social:hover {
+    border-color: transparent;
+    background: var(--ink-foreground);
+    color: var(--ink);
+  }
+
+  .site-footer__subscribe {
+    display: grid;
+    gap: 1.25rem;
+    max-width: 22rem;
+    width: 100%;
+  }
+
+  .site-footer__nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem;
+  }
+
+  .site-footer__nav ul {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .site-footer__group-title {
+    margin-bottom: 0.875rem;
+  }
+
+  .site-footer__link {
+    color: var(--ink-muted);
+    transition: color 0.25s ease;
+  }
+
+  .site-footer__link:hover {
+    color: var(--ink-foreground);
+  }
+
+  .site-footer__bottom {
+    border-top: 1px solid rgb(255 255 255 / 0.12);
+    padding-top: 1.5rem;
+  }
+
+  @media (min-width: 48rem) {
+    .site-footer__nav {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 3rem;
+      max-width: 34rem;
+      width: 100%;
+    }
+  }
+</style>

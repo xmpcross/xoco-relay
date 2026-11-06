@@ -1,0 +1,59 @@
+---
+import Avatar from "@/components/ui/Avatar.astro";
+import type { Post } from "@/lib/posts";
+
+interface Props {
+  authors: { slug: string; name: string; role: string; posts: Post[] }[];
+  limit?: number;
+}
+
+const { authors, limit = 3 } = Astro.props;
+const list = authors.slice(0, limit);
+---
+
+{
+  list.length > 0 && (
+    <section class="panel authors" aria-labelledby="sidebar-authors-title">
+      <h2 id="sidebar-authors-title" class="txt-h5">
+        Authors
+      </h2>
+      <div class="authors__list hover-fade-group">
+        {list.map((author) => (
+          <a class="author-row" href={`/author/${author.slug}/`}>
+            <Avatar name={author.name} size="lg" />
+            <span class="author-row__body">
+              <span class="txt-h6">{author.name}</span>
+              <span class="txt-xs txt-dim line-clamp-2">{author.role}</span>
+            </span>
+          </a>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .authors {
+    display: grid;
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+
+  .authors__list {
+    display: grid;
+    gap: 0.875rem;
+  }
+
+  .author-row {
+    display: grid;
+    grid-template-columns: 4rem minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .author-row__body {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+</style>

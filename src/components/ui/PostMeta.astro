@@ -1,0 +1,24 @@
+---
+import Avatar from "@/components/ui/Avatar.astro";
+import SwapText from "@/components/ui/SwapText.astro";
+import { authorSlug, formatDate, readMinutes, type Post } from "@/lib/posts";
+
+interface Props {
+  post: Post;
+  onDark?: boolean;
+  showReadTime?: boolean;
+  class?: string;
+}
+
+const { post, onDark = false, showReadTime = false, class: className = "" } = Astro.props;
+const { author, date } = post.data;
+---
+
+<div class:list={["meta", onDark && "meta--onDark", className]}>
+  <a class="meta__byline" href={`/author/${authorSlug(author.name)}/`}>
+    <Avatar name={author.name} onDark={onDark} />
+    <SwapText text={author.name} />
+  </a>
+  <time class="meta__fact" datetime={date.toISOString()}>{formatDate(date)}</time>
+  {showReadTime && <span class="meta__fact">{readMinutes(post)} min read</span>}
+</div>
